@@ -4,10 +4,10 @@
 #define NUM_CONFIGURATION 1
 
 
-/**
- * read adjacent matrix from input
- */
+//read adjacent matrix from input
 int **read_adjacent_matrix(int *node_number);
+//free the adjacent matrix
+void free_adjacent_matrix(int node_number, int** adjacent_matrix);
 //print the adjacent matrix to stdout
 void print_adjacent_matrix(int node_number, int** adjacent_matrix);
 
@@ -54,6 +54,19 @@ int **read_adjacent_matrix(int *node_number){
     return adjacent_matrix;
 
 }
+
+//free the adjacent matrix
+void free_adjacent_matrix(int node_number, int** adjacent_matrix){
+
+    int i;
+    for(i=0;i<node_number;i++){
+        free(adjacent_matrix[i])
+    }
+    free(adjacent_matrix);
+
+}
+
+
 
 //print the adjacent matrix to stdout
 void print_adjacent_matrix(int node_number, int** adjacent_matrix){
