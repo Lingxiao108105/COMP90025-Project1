@@ -73,7 +73,9 @@ int pop(Queue *queue);
 //sequential algorithm
 
 // init the sequential data
-Sequential_Data *sequential_init(int node_number, int **adjacent_matrix, int s, int t);
+Sequential_Data *sequential_init(int node_number, int **adjacent_matrix);
+//init the flow for reuse the data
+void sequential_init_flow(Sequential_Data *data, int s, int t);
 // free the Sequential_Data(exclude adjacent matrix)
 void free_sequential_data(Sequential_Data *data);
 // try to push flow (u is not s or t)
@@ -81,7 +83,9 @@ int sequential_push(Sequential_Data *data, int u);
 // d(u) = 1 + min d(v)
 void sequential_relabel(Sequential_Data *data, int u);
 // sequential version of pushrelabel algorithm
-void sequential_pushrelabel(int node_number, int **adjacent_matrix, int s, int t);
+void sequential_pushrelabel(Sequential_Data *data, int s, int t);
+// sequential version of all pair max flow
+void sequential_all_pair(int node_number, int **adjacent_matrix);
 
 
 //===========================================================
@@ -100,8 +104,10 @@ int main(int argc, char * argv[]){
 
     //scan the input
     adjacent_matrix = read_adjacent_matrix(&node_number);
-    sequential_pushrelabel(node_number,adjacent_matrix,3,0);
+    sequential_all_pair(node_number,adjacent_matrix);
     free_adjacent_matrix(node_number,adjacent_matrix);
+
+    return 0;
 
 }
 
@@ -221,15 +227,18 @@ void push(Queue *queue, int node){
 
     Queue_Node *Qnode;
 
-    if(queue->last==NULL){
-        return;
-    }
-
     //create new queue node
     Qnode = new_node(node);
-    //add it to the tail of queue
-    queue->last->next = Qnode;
-    queue->last = Qnode;
+    
+    if(queue->head == NULL){
+        //if it is the first node
+        queue->head = Qnode;
+        queue->last = Qnode;
+    }else{
+        //add it to the tail of queue
+        queue->last->next = Qnode;
+        queue->last = Qnode;
+    }
     (queue->length)++;
 
 }
@@ -240,57 +249,79 @@ int pop(Queue *queue){
     int node;
 
     if(queue->head==NULL){
-        printf("ERROR: try to pop from an empty queue！");
+        printf("ERROR: try to pop from an empty queue!");
         return -1;
     }
 
     Queue_Node *temp = queue->head;
     node = temp->node;
     queue->head = queue->head->next;
-    (queue->length)--;
     free(temp);
+    (queue->length)--;
+
+    //queue is empty
+    if(queue->head == NULL){
+        queue->last = NULL;
+    }
+    
     return node;
 }
 
 //init the sequential data
-Sequential_Data *sequential_init(int node_number, int **adjacent_matrix, int s, int t){
+Sequential_Data *sequential_init(int node_number, int **adjacent_matrix){
     int i,j;
 
     // create data
     Sequential_Data *temp = (Sequential_Data *)malloc(sizeof(Sequential_Data));
     temp->adjacent_matrix = adjacent_matrix;
     temp->node_number = node_number;
-    temp->s = s;
-    temp->t = t;
     // malloc space
     temp->d = (int *)calloc(node_number, sizeof(int)); 
     temp->excess = (int *)calloc(node_number, sizeof(int));
     temp->flows = create_adjacent_matrix(node_number);
     temp->active_nodes = create_queue();
 
+}
+
+//init the flow for reuse the data
+void sequential_init_flow(Sequential_Data *data, int s, int t){
+    int i,j;
+
+    // updata s,t
+    data->s = s;
+    data->t = t;
+    //clean the data
+    for (i=0;i<data->node_number;i++) { 
+        data->d[i] = 0; 
+        data->excess[i] = 0;
+        for (j=0;j<data->node_number;j++) { 
+            data->flows[i][j] = 0;
+        }
+    }
+
     // saturating all the edges sv coming out the source s
-    temp->d[s] = node_number;
-    for(i=0;i<node_number;i++){
+    data->d[data->s] = data->node_number;
+    for(i=0;i<data->node_number;i++){
         if(i == s){
             continue;
         }
-        if(adjacent_matrix[s][i] != 0){
+        if(data->adjacent_matrix[s][i] != 0){
             // saturating the capacity
-            temp->flows[s][i] = adjacent_matrix[s][i];
+            data->flows[s][i] = data->adjacent_matrix[s][i];
             // excess increase by capacity of sv
-            temp->excess[i] = adjacent_matrix[s][i];
+            data->excess[i] = data->adjacent_matrix[s][i];
             // add residual flow
-            temp->flows[i][s] = -(temp->flows[s][i]);
+            data->flows[i][s] = -(data->flows[s][i]);
             // node will become active
-            if(i != t){
-                push(temp->active_nodes,i);
+            if(i != data->t){
+                push(data->active_nodes,i);
             }
         }
     }
 
-    return temp;
-
 }
+
+
 
 // free the Sequential_Data(exclude adjacent matrix)
 void free_sequential_data(Sequential_Data *data){
@@ -319,9 +350,9 @@ int sequential_push(Sequential_Data *data, int u){
             data->excess[u] -= flow;
 
             // excess e(v) to increase by send flow(but exclude s and t)
-            if(v != data->s && v != data-> t){
+            if(v != data->s){
                 //check whether the node v will become active
-                if(data->excess[v] == 0){
+                if(data->excess[v] == 0 && v != data->t){
                     push_flag = 1;
                 }else{
                     push_flag = 0;
@@ -358,11 +389,13 @@ void sequential_relabel(Sequential_Data *data, int u){
 }
 
 // sequential version of pushrelabel algorithm
-void sequential_pushrelabel(int node_number, int **adjacent_matrix, int s, int t){
+void sequential_pushrelabel(Sequential_Data *data, int s, int t){
     int u;
 
-    Sequential_Data *data = sequential_init(node_number,adjacent_matrix,s,t);
+    //init flow
+    sequential_init_flow(data,s,t);
 
+    //do the while loop
     while(!isEmpty(data->active_nodes)){
         u = pop(data->active_nodes);
 
@@ -373,7 +406,27 @@ void sequential_pushrelabel(int node_number, int **adjacent_matrix, int s, int t
         }
     }
 
-    printf("maxflow is %d",data->excess[s]);
+    printf("%d to %d : %d\n", s, t, data->excess[t]);
+}
+
+
+// sequential version of all pair max flow
+void sequential_all_pair(int node_number, int **adjacent_matrix){
+    int i,j;
+
+    //init
+    Sequential_Data *data = sequential_init(node_number,adjacent_matrix);
+
+    for(i=0;i<node_number;i++){
+        for(j=0;j<node_number;j++){
+            if(i != j){
+                sequential_pushrelabel(data,i,j);
+            }
+        }
+    }
+
+    //free the data
     free_sequential_data(data);
 }
+
 
