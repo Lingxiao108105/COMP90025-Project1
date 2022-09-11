@@ -13,12 +13,11 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
 
-
-#SBATCH --output=output.txt
+#SBATCH --output=stat.txt
 #SBATCH --job-name=parallel
 
 # The maximum running time of the job in days-hours:mins:sec
-#SBATCH --time=0-03:00:00
+#SBATCH --time=0-00:30:00
 
 # The project ID which this job should run under:
 #SBATCH --account="punim0520"
@@ -35,41 +34,14 @@
 # The modules to load:
 module load gcc/11.2.0
 
-
-
-
 # compile
 gcc -fopenmp solution.c -o solution
 
-#sequential
-# for num in {10..100..10}  
-# do  
-#     for i in {1..10}  
-#     do
-#     ./solution 0 1 < input/input$num.txt >> output.txt
-#     done
-# done 
-
-#parallel
-# for num in {10..100..10}  
-# do  
-#     for thread in {1..32}
-#     do
-#         for i in {1..10}  
-#         do
-#         ./solution 1 $thread < input/input$num.txt >> output.txt
-#         done
-#     done
-# done 
-
 #parallel 32 core
-for num in {110..400..10}  
-do  
-    for i in {1..10}  
-    do
-    ./solution 1 32 < input/input$num.txt >> output.txt
-    done
-done 
+for i in {1..10}  
+do
+./solution 1 32 < input/input400.txt >> output_single.txt
+done
 
 
 my-job-stats -a -n -s
