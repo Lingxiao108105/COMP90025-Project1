@@ -4,12 +4,49 @@
 #define NUM_CONFIGURATION 1
 
 
-//read adjacent matrix from input
+// Node of linked list
+typedef struct queue_node{
+    int node;
+    struct queue_node *next;
+}Queue_Node;
+
+// Priority Queue
+typedef struct queue{
+    Queue_Node *head;
+    Queue_Node *last;
+    unsigned int length;
+}Queue;
+
+//===========================================================
+//adjacent matrix
+/**
+ * read adjacent matrix from input
+ * return adjacent matrix
+ */
 int **read_adjacent_matrix(int *node_number);
 //free the adjacent matrix
 void free_adjacent_matrix(int node_number, int** adjacent_matrix);
 //print the adjacent matrix to stdout
 void print_adjacent_matrix(int node_number, int** adjacent_matrix);
+//===========================================================
+
+//===========================================================
+//queue
+
+// create an empty priority queue
+Queue *create_queue();
+// create a new node
+Queue_Node *new_node(int node);
+//free a priority queue and data inside
+void free_queue(Queue *queue);
+// push a node to the tail of queue
+void push(Queue *queue, int node);
+// pop the first element and return node
+int pop(Queue *queue);
+
+//===========================================================
+
+
 
 // read
 int main(int argc, char * argv[]){
@@ -24,6 +61,7 @@ int main(int argc, char * argv[]){
 
     //scan the input
     adjacent_matrix = read_adjacent_matrix(&node_number);
+    print_adjacent_matrix(node_number,adjacent_matrix);
 
 }
 
@@ -43,7 +81,7 @@ int **read_adjacent_matrix(int *node_number){
     //allocate the adjacent matrix
     adjacent_matrix = (int **)(malloc(sizeof(int*) * (*node_number)));
     for(i=0;i<*node_number;i++){
-        adjacent_matrix[i] = (int *)(calloc(0,sizeof(int) * (*node_number)));
+        adjacent_matrix[i] = (int *)(calloc(*node_number,sizeof(int)));
     }
 
     //read the edges
@@ -60,13 +98,11 @@ void free_adjacent_matrix(int node_number, int** adjacent_matrix){
 
     int i;
     for(i=0;i<node_number;i++){
-        free(adjacent_matrix[i])
+        free(adjacent_matrix[i]);
     }
     free(adjacent_matrix);
 
 }
-
-
 
 //print the adjacent matrix to stdout
 void print_adjacent_matrix(int node_number, int** adjacent_matrix){
@@ -80,3 +116,73 @@ void print_adjacent_matrix(int node_number, int** adjacent_matrix){
     }
 
 }
+
+// create an empty priority queue
+Queue *create_queue(){
+    Queue *temp = (Queue *)malloc(sizeof(Queue));
+    temp->head = NULL;
+    temp->last = NULL;
+    temp->length = 0;
+    return temp;
+}
+
+// create a new node
+Queue_Node *new_node(int node){
+    Queue_Node *temp = (Queue_Node *)malloc(sizeof(Queue_Node));
+    temp->node = node;
+    temp->next = NULL;
+ 
+    return temp;
+}
+
+//free a priority queue and data inside
+void free_queue(Queue *queue){
+    if(queue == NULL){
+        return;
+    }
+    Queue_Node *curr_node=queue->head;
+    Queue_Node *temp_node;
+    while(curr_node!=NULL){
+        temp_node = curr_node;
+        curr_node = curr_node->next;
+        free(temp_node);
+    }
+    free(queue);
+}
+
+// push a node to the tail of queue
+void push(Queue *queue, int node){
+
+    Queue_Node *Qnode;
+
+    if(queue->last==NULL){
+        return NULL;
+    }
+
+    //create new queue node
+    Qnode = new_node(node);
+    //add it to the tail of queue
+    queue->last->next = Qnode;
+    queue->last = Qnode;
+    (queue->length)++;
+
+}
+
+// pop the first element and return node
+int pop(Queue *queue){
+
+    int node;
+
+    if(queue->head==NULL){
+        return NULL;
+    }
+
+    Queue_Node *temp = queue->head;
+    node = temp->node;
+    queue->head = queue->head->next;
+    (queue->length)--;
+    free(temp);
+    return node;
+}
+
+
