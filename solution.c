@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <omp.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -43,7 +44,7 @@ int min(int a, int b);
  * read adjacent matrix from input
  * return adjacent matrix
  */
-int **read_adjacent_matrix(int *node_number);
+int **read_adjacent_matrix(int *node_number, int *edge_number);
 /**
  * create empty adjacent matrix
  */
@@ -83,7 +84,7 @@ int sequential_push(Sequential_Data *data, int u);
 // d(u) = 1 + min d(v)
 void sequential_relabel(Sequential_Data *data, int u);
 // sequential version of pushrelabel algorithm
-void sequential_pushrelabel(Sequential_Data *data, int s, int t);
+int sequential_pushrelabel(Sequential_Data *data, int s, int t);
 // sequential version of all pair max flow
 void sequential_all_pair(int node_number, int **adjacent_matrix);
 
@@ -94,7 +95,7 @@ void sequential_all_pair(int node_number, int **adjacent_matrix);
 // read
 int main(int argc, char * argv[]){
 
-    int node_number;
+    int node_number,edge_number;
     int **adjacent_matrix;
     
     if(argc != NUM_CONFIGURATION + 1){
@@ -103,8 +104,15 @@ int main(int argc, char * argv[]){
     }
 
     //scan the input
-    adjacent_matrix = read_adjacent_matrix(&node_number);
+    adjacent_matrix = read_adjacent_matrix(&node_number,&edge_number);
+
+    //print number of node and edge
+    printf("%d %d ",node_number,edge_number);
+
+    //computation
     sequential_all_pair(node_number,adjacent_matrix);
+
+    //free the matrix
     free_adjacent_matrix(node_number,adjacent_matrix);
 
     return 0;
@@ -123,9 +131,9 @@ int min(int a, int b){
  * read adjacent matrix from input
  * return adjacent matrix
  */
-int **read_adjacent_matrix(int *node_number){
+int **read_adjacent_matrix(int *node_number, int *edge_number){
     // store input edge u->v with capactiy
-    int u,v,capacity;
+    int u,v,capacity,current_edge_number = 0;
     int **adjacent_matrix;
     int i;
 
@@ -135,9 +143,12 @@ int **read_adjacent_matrix(int *node_number){
     adjacent_matrix = create_adjacent_matrix(*node_number);
 
     //read the edges
-    while(scanf("%d %d %d\n", &u,&v,&capacity) == 3){
+    while(scanf("%d %d %d.0\n", &u,&v,&capacity) == 3){
         adjacent_matrix[u][v] = capacity;
+        current_edge_number++;
     }
+
+    *edge_number = current_edge_number;
 
     return adjacent_matrix;
 
@@ -389,7 +400,7 @@ void sequential_relabel(Sequential_Data *data, int u){
 }
 
 // sequential version of pushrelabel algorithm
-void sequential_pushrelabel(Sequential_Data *data, int s, int t){
+int sequential_pushrelabel(Sequential_Data *data, int s, int t){
     int u;
 
     //init flow
@@ -406,24 +417,35 @@ void sequential_pushrelabel(Sequential_Data *data, int s, int t){
         }
     }
 
-    printf("%d to %d : %d\n", s, t, data->excess[t]);
+    //printf("%d to %d : %d\n", s, t, data->excess[t]);
+    return data->excess[t];
 }
 
 
 // sequential version of all pair max flow
 void sequential_all_pair(int node_number, int **adjacent_matrix){
-    int i,j;
+    int i,j,minimum = INT_MAX;
 
     //init
     Sequential_Data *data = sequential_init(node_number,adjacent_matrix);
 
+    double start_time = omp_get_wtime();
+
+    #pragma omp parallel for collapse(2) num_threads(4) reduction(min:minimum)
     for(i=0;i<node_number;i++){
         for(j=0;j<node_number;j++){
             if(i != j){
-                sequential_pushrelabel(data,i,j);
+                minimum = min(minimum,sequential_pushrelabel(data,i,j));
             }
         }
     }
+
+    double end_time = omp_get_wtime();
+    //print time
+    printf("%d\n",end_time-start_time);
+
+    //print the minimal
+    //printf("%d\n",minimum);
 
     //free the data
     free_sequential_data(data);
