@@ -6,7 +6,7 @@
 #define TRUE 1
 #define FALSE 0
 
-#define NUM_CONFIGURATION 1
+#define NUM_CONFIGURATION 2
 
 
 // Node of linked list
@@ -91,11 +91,14 @@ void sequential_all_pair(int node_number, int **adjacent_matrix);
 
 //===========================================================
 
+// parallel version of all pair max flow
+void parallel_all_pair(int node_number, int **adjacent_matrix, int number_thread);
+
 
 // read
 int main(int argc, char * argv[]){
 
-    int node_number,edge_number;
+    int node_number,edge_number,is_parallel,number_thread;
     int **adjacent_matrix;
     
     if(argc != NUM_CONFIGURATION + 1){
@@ -103,14 +106,23 @@ int main(int argc, char * argv[]){
         exit(1);
     }
 
+    is_parallel = atoi(argv[1]);
+    number_thread = atoi(argv[2]);
+
     //scan the input
     adjacent_matrix = read_adjacent_matrix(&node_number,&edge_number);
 
     //print number of node and edge
-    printf("%d %d ",node_number,edge_number);
+    printf("%d %d %d ",node_number,edge_number,number_thread);
 
     //computation
-    sequential_all_pair(node_number,adjacent_matrix);
+    if(is_parallel){
+        parallel_all_pair(node_number,adjacent_matrix,number_thread);
+    }else{
+        sequential_all_pair(node_number,adjacent_matrix);
+    }
+    
+    
 
     //free the matrix
     free_adjacent_matrix(node_number,adjacent_matrix);
@@ -143,7 +155,7 @@ int **read_adjacent_matrix(int *node_number, int *edge_number){
     adjacent_matrix = create_adjacent_matrix(*node_number);
 
     //read the edges
-    while(scanf("%d %d %d.0\n", &u,&v,&capacity) == 3){
+    while(scanf("%d %d %d\n", &u,&v,&capacity) == 3){
         adjacent_matrix[u][v] = capacity;
         current_edge_number++;
     }
@@ -287,12 +299,15 @@ Sequential_Data *sequential_init(int node_number, int **adjacent_matrix){
     temp->adjacent_matrix = adjacent_matrix;
     temp->node_number = node_number;
     // malloc space
-    temp->d = (int *)calloc(node_number, sizeof(int)); 
-    temp->excess = (int *)calloc(node_number, sizeof(int));
+    temp->d = (int *)malloc(node_number * sizeof(int)); 
+    temp->excess = (int *)malloc(node_number * sizeof(int));
     temp->flows = create_adjacent_matrix(node_number);
     temp->active_nodes = create_queue();
 
+    return temp;
+
 }
+
 
 //init the flow for reuse the data
 void sequential_init_flow(Sequential_Data *data, int s, int t){
@@ -331,6 +346,8 @@ void sequential_init_flow(Sequential_Data *data, int s, int t){
     }
 
 }
+
+
 
 
 
@@ -425,13 +442,12 @@ int sequential_pushrelabel(Sequential_Data *data, int s, int t){
 // sequential version of all pair max flow
 void sequential_all_pair(int node_number, int **adjacent_matrix){
     int i,j,minimum = INT_MAX;
-
+    
     //init
     Sequential_Data *data = sequential_init(node_number,adjacent_matrix);
 
     double start_time = omp_get_wtime();
 
-    #pragma omp parallel for collapse(2) num_threads(4) reduction(min:minimum)
     for(i=0;i<node_number;i++){
         for(j=0;j<node_number;j++){
             if(i != j){
@@ -442,13 +458,42 @@ void sequential_all_pair(int node_number, int **adjacent_matrix){
 
     double end_time = omp_get_wtime();
     //print time
-    printf("%d\n",end_time-start_time);
+    printf("%f\n",end_time-start_time);
 
     //print the minimal
     //printf("%d\n",minimum);
 
     //free the data
     free_sequential_data(data);
+}
+
+// sequential version of all pair max flow
+void parallel_all_pair(int node_number, int **adjacent_matrix, int number_thread){
+    int i,j,minimum = INT_MAX;
+    
+    double start_time = omp_get_wtime();
+
+    #pragma omp parallel for collapse(2) num_threads(number_thread) reduction(min:minimum)
+    for(i=0;i<node_number;i++){
+        for(j=0;j<node_number;j++){
+            if(i != j){
+                //init every thread need to have its own data
+                Sequential_Data *data = sequential_init(node_number,adjacent_matrix);
+                minimum = min(minimum,sequential_pushrelabel(data,i,j));
+                //free the data
+                free_sequential_data(data);
+            }
+        }
+    }
+
+    double end_time = omp_get_wtime();
+    //print time
+    printf("%f\n",end_time-start_time);
+
+    //print the minimal
+    //printf("%d\n",minimum);
+
+    
 }
 
 
