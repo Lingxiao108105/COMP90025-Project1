@@ -7,17 +7,16 @@
 #SBATCH --nodes=1
 
 # The name of the job:
-#SBATCH --job-name="parallel"
+#SBATCH --job-name="single"
 
 # Maximum number of tasks/CPU cores used by the job:
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=32
+#SBATCH --cpus-per-task=1
 
-#SBATCH --output=stat.txt
-#SBATCH --job-name=parallel
+#SBATCH --output=output_single.txt
 
 # The maximum running time of the job in days-hours:mins:sec
-#SBATCH --time=0-00:30:00
+#SBATCH --time=0-04:00:00
 
 # The project ID which this job should run under:
 #SBATCH --account="punim0520"
@@ -37,11 +36,10 @@ module load gcc/11.2.0
 # compile
 gcc -fopenmp solution.c -o solution
 
-#parallel 32 core
+#single 1 core
 for i in {1..10}  
 do
-./solution 1 32 < input/input400.txt >> output_single.txt
+./solution 0 1 < input/input200.txt >> output_single.txt
 done
-
 
 my-job-stats -a -n -s

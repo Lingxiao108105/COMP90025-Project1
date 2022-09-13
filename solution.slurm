@@ -13,9 +13,8 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
 
-
-#SBATCH --output=output.txt
-#SBATCH --job-name=parallel
+#output file
+#SBATCH --output=output64.txt
 
 # The maximum running time of the job in days-hours:mins:sec
 #SBATCH --time=0-03:00:00
@@ -63,13 +62,25 @@ gcc -fopenmp solution.c -o solution
 # done 
 
 #parallel 32 core
-for num in {110..400..10}  
-do  
-    for i in {1..10}  
-    do
-    ./solution 1 32 < input/input$num.txt >> output.txt
-    done
-done 
+# for num in {110..400..10}  
+# do  
+#     for i in {1..10}  
+#     do
+#     ./solution 1 32 < input/input$num.txt >> output.txt
+#     done
+# done 
+
+#parallel 1 core
+# for i in {1..10}  
+# do
+# ./solution 1 1 < input/input200.txt >> output.txt
+# done
+
+#parallel 64 core
+for i in {1..10}  
+do
+./solution 1 64 < input/input200.txt >> output.txt
+done
 
 
 my-job-stats -a -n -s

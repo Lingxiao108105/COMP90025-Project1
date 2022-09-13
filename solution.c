@@ -46,6 +46,10 @@ int min(int a, int b);
  */
 int **read_adjacent_matrix(int *node_number, int *edge_number);
 /**
+ * copy an adjacent matrix
+ */
+int **copy_adjacent_matrix(int node_number,int** adjacent_matrix);
+/**
  * create empty adjacent matrix
  */
 int **create_adjacent_matrix(int node_number);
@@ -167,6 +171,28 @@ int **read_adjacent_matrix(int *node_number, int *edge_number){
 }
 
 /**
+ * copy an adjacent matrix
+ */
+int **copy_adjacent_matrix(int node_number,int** adjacent_matrix){
+    int i,j;
+    int **new_adjacent_matrix;
+
+    //allocate the adjacent matrix (use malloc to save time)
+    new_adjacent_matrix = (int **)(malloc(sizeof(int*) * (node_number)));
+    for(i=0;i<node_number;i++){
+        new_adjacent_matrix[i] = (int *)(malloc(node_number *sizeof(int)));
+    }
+
+    for(i=0;i<node_number;i++){
+        for(j=0;j<node_number;j++){
+            new_adjacent_matrix[i][j] = adjacent_matrix[i][j];
+        }
+    }
+
+    return new_adjacent_matrix;
+}
+
+/**
  * create empty adjacent matrix
  */
 int **create_adjacent_matrix(int node_number){
@@ -182,6 +208,8 @@ int **create_adjacent_matrix(int node_number){
     return adjacent_matrix;
 
 }
+
+
 
 //free the adjacent matrix
 void free_adjacent_matrix(int node_number, int** adjacent_matrix){
@@ -457,17 +485,21 @@ void sequential_all_pair(int node_number, int **adjacent_matrix){
     }
 
     double end_time = omp_get_wtime();
-    //print time
-    printf("%f\n",end_time-start_time);
 
     //print the minimal
-    //printf("%d\n",minimum);
+    printf("%d ",minimum);
+
+    //print time
+    printf("%f ",end_time-start_time);
+
+    //print new line
+    printf("\n",minimum);
 
     //free the data
     free_sequential_data(data);
 }
 
-// sequential version of all pair max flow
+// parallel version of all pair max flow
 void parallel_all_pair(int node_number, int **adjacent_matrix, int number_thread){
     int i,j,minimum = INT_MAX;
     
@@ -477,7 +509,7 @@ void parallel_all_pair(int node_number, int **adjacent_matrix, int number_thread
     for(i=0;i<node_number;i++){
         for(j=0;j<node_number;j++){
             if(i != j){
-                //init every thread need to have its own data
+                //init,  every thread need to have its own data
                 Sequential_Data *data = sequential_init(node_number,adjacent_matrix);
                 minimum = min(minimum,sequential_pushrelabel(data,i,j));
                 //free the data
@@ -487,13 +519,49 @@ void parallel_all_pair(int node_number, int **adjacent_matrix, int number_thread
     }
 
     double end_time = omp_get_wtime();
-    //print time
-    printf("%f\n",end_time-start_time);
 
     //print the minimal
-    //printf("%d\n",minimum);
+    printf("%d ",minimum);
 
+    //print time
+    printf("%f ",end_time-start_time);
+
+    //print new line
+    printf("\n");
     
 }
+
+// // parallel version of all pair max flow with some optimization
+// void parallel_op_all_pair(int node_number, int **adjacent_matrix, int number_thread){
+//     int i,j,minimum = INT_MAX;
+    
+//     double start_time = omp_get_wtime();
+
+//     Sequential_Data *data = sequential_init(node_number,adjacent_matrix);
+
+//     #pragma omp parallel for dynamic nonmonotonic collapse(2) num_threads(number_thread) reduction(min:minimum) threadprivate(data)
+//     for(i=0;i<node_number;i++){
+//         for(j=0;j<node_number;j++){
+//             if(i != j){
+                
+//                 minimum = min(minimum,sequential_pushrelabel(data,i,j));
+//                 //free the data
+//                 free_sequential_data(data);
+//             }
+//         }
+//     }
+
+//     double end_time = omp_get_wtime();
+
+//     //print the minimal
+//     printf("%d ",minimum);
+
+//     //print time
+//     printf("%f ",end_time-start_time);
+
+//     //print new line
+//     printf("\n");
+    
+// }
 
 
