@@ -1,3 +1,28 @@
+/**
+ * environment: 
+ * gcc 11.2.0
+ * 
+ * how to compile the program:
+ * gcc -fopenmp solution.c -o solution
+ * 
+ * how to run the program:
+ * ./solution <implementation> <number_of_threads> < <input_file>
+ * <implementation>    : 0, 1 or 2. 0 is the sequential version, 1 is the origin version, 2 is the dynamic version
+ * <number_of_threads> : how many threads you want OpenMP to create
+ * <input_file>        : the input file
+ * 
+ * output:
+ * <number_of_vertices> <number_of_edges> <number_of_threads> <overall_minimum_maximum_flows> <time_comsumed> 
+ * 
+ * e.g:
+ * ./solution 2 64 < input/input200.txt
+ * this command run the dynamic version with 64 threads with input input/input200.txt
+ * and output:
+ * 200 39432 64 8842 429.769042 
+ * means the input graph has 200 vertices and 39432 edges and the result is 8842.
+ * 64 threads are created and the program runs for 429.769042 seconds.
+**/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -97,6 +122,8 @@ void sequential_all_pair(int node_number, int **adjacent_matrix);
 
 // parallel version of all pair max flow
 void parallel_all_pair(int node_number, int **adjacent_matrix, int number_thread);
+// parallel version of all pair max flow with workbalance
+void parallel_workbalance_all_pair(int node_number, int **adjacent_matrix, int number_thread);
 
 
 // read
@@ -119,11 +146,19 @@ int main(int argc, char * argv[]){
     //print number of node and edge
     printf("%d %d %d ",node_number,edge_number,number_thread);
 
-    //computation
-    if(is_parallel){
-        parallel_all_pair(node_number,adjacent_matrix,number_thread);
-    }else{
+    // set number of threads
+    omp_set_num_threads(number_thread);
+
+    // computation
+    if(is_parallel == 0){
         sequential_all_pair(node_number,adjacent_matrix);
+    }else if(is_parallel == 1){
+        parallel_all_pair(node_number,adjacent_matrix,number_thread);
+    }else if(is_parallel == 2){
+        parallel_workbalance_all_pair(node_number,adjacent_matrix,number_thread);
+    }else{
+        perror("is_parallel wrong!");
+        exit(1);
     }
     
     
@@ -528,40 +563,39 @@ void parallel_all_pair(int node_number, int **adjacent_matrix, int number_thread
 
     //print new line
     printf("\n");
-    
+
 }
 
-// // parallel version of all pair max flow with some optimization
-// void parallel_op_all_pair(int node_number, int **adjacent_matrix, int number_thread){
-//     int i,j,minimum = INT_MAX;
+// parallel version of all pair max flow with workbalance
+void parallel_workbalance_all_pair(int node_number, int **adjacent_matrix, int number_thread){
+    int i,j,minimum = INT_MAX;  
     
-//     double start_time = omp_get_wtime();
+    double start_time = omp_get_wtime();
 
-//     Sequential_Data *data = sequential_init(node_number,adjacent_matrix);
+    #pragma omp parallel for schedule(nonmonotonic:dynamic) collapse(2) num_threads(number_thread) reduction(min:minimum)
+    for(i=0;i<node_number;i++){
+        for(j=0;j<node_number;j++){
+            if(i != j){
+                //init,  every thread need to have its own data
+                Sequential_Data *data = sequential_init(node_number,adjacent_matrix);
+                minimum = min(minimum,sequential_pushrelabel(data,i,j));
+                //free the data
+                free_sequential_data(data);
+            }
+        }
+    }
 
-//     #pragma omp parallel for dynamic nonmonotonic collapse(2) num_threads(number_thread) reduction(min:minimum) threadprivate(data)
-//     for(i=0;i<node_number;i++){
-//         for(j=0;j<node_number;j++){
-//             if(i != j){
-                
-//                 minimum = min(minimum,sequential_pushrelabel(data,i,j));
-//                 //free the data
-//                 free_sequential_data(data);
-//             }
-//         }
-//     }
+    double end_time = omp_get_wtime();
 
-//     double end_time = omp_get_wtime();
+    //print the minimal
+    printf("%d ",minimum);
 
-//     //print the minimal
-//     printf("%d ",minimum);
+    //print time
+    printf("%f ",end_time-start_time);
 
-//     //print time
-//     printf("%f ",end_time-start_time);
-
-//     //print new line
-//     printf("\n");
+    //print new line
+    printf("\n");
     
-// }
+}
 
 
